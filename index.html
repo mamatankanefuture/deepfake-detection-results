@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audio-Visual Deepfake Detection Results</title>
+<meta name="color-scheme" content="light">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column of heatmap sections, each a scrollable table with a filter row above */
+:root {
+  --bg: #ffffff; --surface: #ffffff; --fg: #0d1b2e; --muted: #4f6278; --line: #cfdcec;
+  --brand: #0b3d91; --accent: #00a3d9; --chip: #e1ecf8;
+  --banner: #0b3d91; --on-banner: #ffffff; --on-banner-muted: #c4d8f5; --banner-chip: rgba(255,255,255,.14);
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+:root[data-theme="dark"] {
+  --bg: #0a1424; --surface: #10203a; --fg: #e4eefa; --muted: #95aac4; --line: #22385a;
+  --brand: #8cc0ff; --accent: #3fd0ff; --chip: #182c4a;
+  --banner: #12305e; --on-banner: #ffffff; --on-banner-muted: #a9c3e8; --banner-chip: rgba(255,255,255,.10); color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--font-body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 32px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 40px; }
+header { display: grid; gap: 10px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+.eyebrow { font: 600 12px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 700 clamp(28px, 4vw, 40px)/1.1 var(--font-display); color: var(--brand); margin: 0; text-wrap: balance; }
+h2 { font: 600 24px/1.2 var(--font-display); color: var(--brand); margin: 0; text-wrap: balance; }
+p { margin: 0; max-width: 68ch; }
+.lede { color: var(--muted); }
+.note { font-size: 13px; color: var(--muted); }
+section { display: grid; gap: 14px; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px; }
+.fact { background: var(--chip); border-radius: 6px; padding: 6px 10px; font-size: 13px; }
+.fact b { font-family: var(--font-data); font-weight: 500; }
+.controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.seg button { font: 500 13px var(--font-body); color: var(--fg); background: transparent; border: 0; padding: 7px 12px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--brand); color: var(--surface); }
+thead th.met { border-bottom: 2px solid var(--line); }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.label { font-size: 12px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+.scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+table { border-collapse: separate; border-spacing: 3px; font-size: 13px; min-width: 100%; }
+th, td { white-space: nowrap; }
+thead th { font: 600 12px var(--font-body); color: var(--muted); padding: 6px 4px; text-align: center; }
+thead th.ds { background: var(--brand); color: var(--surface); border-radius: 5px; font-size: 13px; }
+th.row { text-align: left; font-weight: 500; padding: 0 12px 0 8px; color: var(--fg); position: sticky; left: 0; background: var(--surface); z-index: 1; }
+th.row .aug { display: inline-block; font: 500 11px var(--font-body); padding: 1px 6px; border-radius: 10px; margin-left: 6px; background: var(--chip); color: var(--muted); }
+th.row .aug.yes { background: var(--accent); color: #04212b; }
+tr.group th { text-align: left; font: 600 14px var(--font-display); color: var(--brand); padding: 14px 8px 4px; border-bottom: 2px solid var(--line); position: sticky; left: 0; background: var(--surface); }
+td.c { font-family: var(--font-data); font-variant-numeric: tabular-nums; text-align: center; padding: 7px 8px; border-radius: 4px; min-width: 52px; }
+td.c.best { outline: 3px solid var(--accent); outline-offset: -3px; font-weight: 500; }
+td.c.na { color: var(--muted); }
+.indent { padding-left: 22px !important; color: var(--muted) !important; }
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+.bar { display: flex; width: 220px; height: 14px; border-radius: 3px; overflow: hidden; }
+.bar span { flex: 1; }
+.tip { position: fixed; pointer-events: none; background: var(--fg); color: var(--bg); font-size: 12px; padding: 6px 9px; border-radius: 6px; max-width: 280px; z-index: 5; }
+footer { font-size: 12px; color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) { td.c { transition: filter .1s; } td.c:hover { filter: brightness(1.12); } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">COS700 · Mamatankane Phahlamohlaka · Supervisor: Prof Jan Eloff</div>
+    <h1>Audio-visual deepfake detection: every result</h1>
+    <p class="lede">All models were trained on FakeAVCeleb only and tested on its held-out test split and on two unseen datasets. Darker cells are higher. The best value in each column is outlined.</p>
+    <div class="facts">
+      <span class="fact">FakeAVCeleb test <b>3,220</b> videos · <b>75</b> real</span>
+      <span class="fact">PolyGlotFake <b>7,183</b> · <b>381</b> real</span>
+      <span class="fact">TalkingHeadBench <b>3,339</b> · <b>414</b> real</span>
+      <span class="fact">AUC uses fake score = 1 − P(real)</span>
+    </div>
+  </header>
+
+  <section id="main">
+    <h2>Design choices and fusion strategies</h2>
+    <p>Fine-tuned (EfficientNet-B0 + audio CNN) and frozen (CLIP, XLS-R, AASIST + small head) models, each as a single modality, with feature-level fusion, and with late fusion, without and with augmentation. "+ SyncNet" adds six lip-sync numbers to the step above it. "Extra training step" is the same logistic regression without SyncNet, so the SyncNet comparison is fair.</p>
+    <p class="note">Precision depends on how many real and fake videos a test set has. Most test videos are fake, so fake precision is high for every model (a detector that calls every video fake would already score 0.977, 0.947 and 0.876), and real precision is low. Recall and macro F1 are the fairer comparison across datasets.</p>
+    <div class="controls">
+      <span class="label">Metric</span>
+      <div class="seg" id="metric">
+        <button type="button" data-v="all" aria-pressed="true">All</button>
+        <button type="button" data-v="AUC" aria-pressed="false">AUC</button>
+        <button type="button" data-v="F1" aria-pressed="false">Macro F1</button>
+        <button type="button" data-v="Real" aria-pressed="false">Real recall</button>
+        <button type="button" data-v="Fake" aria-pressed="false">Fake recall</button>
+        <button type="button" data-v="RealP" aria-pressed="false">Real precision</button>
+        <button type="button" data-v="FakeP" aria-pressed="false">Fake precision</button>
+      </div>
+      <span class="label">Augmentation</span>
+      <div class="seg" id="aug">
+        <button type="button" data-v="both" aria-pressed="true">Both</button>
+        <button type="button" data-v="No" aria-pressed="false">Without</button>
+        <button type="button" data-v="Yes" aria-pressed="false">With</button>
+      </div>
+    </div>
+    <div class="scroll"><table id="t-main"></table></div>
+  </section>
+
+  <section id="classes">
+    <h2>Which modality was faked? Per-class recall</h2>
+    <p>FakeAVCeleb test set, learned late fusion. Each cell is the share of that class's videos given the correct four-class label.</p>
+    <div class="scroll"><table id="t-class"></table></div>
+  </section>
+
+  <section id="generators">
+    <h2>Per generator</h2>
+    <p>The two best detectors overall: <b>A</b> = frozen learned late fusion + SyncNet, without augmentation; <b>B</b> = fine-tuned feature-level fusion + SyncNet, with augmentation. Each generator's fakes are scored against all real videos of that dataset ("All" is the whole test set), so real recall is the same for every generator of a dataset. When both detectors are shown, the better one is outlined.</p>
+    <div class="controls">
+      <span class="label">Metric</span>
+      <div class="seg" id="gmetric">
+        <button type="button" data-v="all" aria-pressed="true">All</button>
+        <button type="button" data-v="AUC" aria-pressed="false">AUC</button>
+        <button type="button" data-v="F1" aria-pressed="false">Macro F1</button>
+        <button type="button" data-v="Real" aria-pressed="false">Real recall</button>
+        <button type="button" data-v="Fake" aria-pressed="false">Fake recall</button>
+        <button type="button" data-v="RealP" aria-pressed="false">Real precision</button>
+        <button type="button" data-v="FakeP" aria-pressed="false">Fake precision</button>
+      </div>
+      <span class="label">Dataset</span>
+      <div class="seg" id="gds">
+        <button type="button" data-v="all" aria-pressed="true">All</button>
+        <button type="button" data-v="0" aria-pressed="false">FakeAVCeleb</button>
+        <button type="button" data-v="1" aria-pressed="false">PolyGlotFake</button>
+        <button type="button" data-v="2" aria-pressed="false">TalkingHeadBench</button>
+      </div>
+      <span class="label">Detector</span>
+      <div class="seg" id="gdet">
+        <button type="button" data-v="both" aria-pressed="true">Both</button>
+        <button type="button" data-v="A" aria-pressed="false">A</button>
+        <button type="button" data-v="B" aria-pressed="false">B</button>
+      </div>
+    </div>
+    <div class="scroll"><table id="t-gen"></table></div>
+  </section>
+
+  <div class="legend"><span>0</span><div class="bar" id="bar"></div><span>1</span><span>darker = higher · outlined = best in column</span></div>
+  <footer>Single training runs, seed 42. Results generated in the project notebook (cells 22, 29, 40, 51, 53–58).</footer>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+const DS = ['FakeAVCeleb', 'PolyGlotFake', 'TalkingHeadBench'];
+const MET = ['AUC', 'F1', 'Real', 'Fake', 'RealP', 'FakeP'];
+const MET_SHORT = { AUC: 'AUC', F1: 'F1', Real: 'Real rec.', Fake: 'Fake rec.', RealP: 'Real prec.', FakeP: 'Fake prec.' };
+const MET_LONG = { AUC: 'AUC', F1: 'macro F1', Real: 'real recall', Fake: 'fake recall', RealP: 'real precision', FakeP: 'fake precision' };
+// values: AUC, F1, real recall, fake recall, real precision, fake precision for FakeAVCeleb, then PolyGlotFake, then TalkingHeadBench
+const MAIN = [
+ ["Fine-tuned", [
+  ["Video only",'No',[0.973,0.745,0.573,0.983,0.448,0.99,0.602,0.452,0.394,0.679,0.064,0.952,0.407,0.377,0.336,0.489,0.085,0.839]],
+  ["Video only",'Yes',[0.975,0.648,0.267,0.989,0.37,0.983,0.703,0.477,0.255,0.779,0.061,0.949,0.379,0.372,0.309,0.49,0.079,0.834]],
+  ["Audio only",'No',[0.825,0.494,0,0.998,0,0.977,0.862,0.516,0.039,0.989,0.172,0.948,0.503,0.477,0.017,0.98,0.108,0.876]],
+  ["Audio only",'Yes',[0.794,0.492,0,0.99,0,0.976,0.809,0.537,0.207,0.907,0.111,0.953,0.511,0.483,0.048,0.933,0.093,0.874]],
+  ["Feature-level fusion",'No',[0.988,0.878,0.853,0.991,0.688,0.996,0.876,0.558,0.824,0.751,0.156,0.987,0.495,0.201,0.862,0.107,0.12,0.846]],
+  ["Feature-level fusion",'Yes',[0.989,0.838,0.84,0.985,0.578,0.996,0.905,0.613,0.814,0.823,0.205,0.987,0.522,0.238,0.857,0.15,0.125,0.882]],
+  ["+ SyncNet",'No',[0.994,0.861,0.88,0.987,0.623,0.997,0.889,0.491,0.934,0.623,0.122,0.994,0.583,0.209,0.918,0.109,0.127,0.903]],
+  ["+ SyncNet",'Yes',[0.99,0.771,0.893,0.969,0.406,0.997,0.916,0.531,0.958,0.683,0.145,0.997,0.62,0.26,0.867,0.176,0.129,0.903]],
+  ["Late fusion (average)",'No',[0.973,0.797,0.64,0.989,0.571,0.991,0.73,0.485,0.446,0.729,0.084,0.959,0.409,0.372,0.411,0.452,0.096,0.844]],
+  ["Late fusion (average)",'Yes',[0.976,0.859,0.813,0.99,0.656,0.996,0.858,0.596,0.722,0.824,0.187,0.981,0.411,0.269,0.809,0.197,0.125,0.879]],
+  ["Late fusion (learned)",'No',[0.987,0.905,0.88,0.993,0.759,0.997,0.891,0.578,0.871,0.768,0.174,0.991,0.501,0.321,0.792,0.268,0.133,0.901]],
+  ["Late fusion (learned)",'Yes',[0.981,0.839,0.853,0.985,0.577,0.996,0.877,0.566,0.853,0.756,0.164,0.989,0.583,0.23,0.882,0.137,0.126,0.891]],
+  ["+ SyncNet ",'No',[0.992,0.784,0.907,0.971,0.43,0.998,0.829,0.483,0.869,0.622,0.114,0.988,0.607,0.402,0.695,0.412,0.143,0.905]],
+  ["+ SyncNet ",'Yes',[0.986,0.744,0.867,0.963,0.359,0.997,0.82,0.503,0.85,0.659,0.123,0.987,0.632,0.457,0.69,0.502,0.164,0.92]]]],
+ ["Frozen", [
+  ["Video only",'No',[0.964,0.726,0.613,0.976,0.38,0.991,0.582,0.433,0.451,0.625,0.063,0.953,0.714,0.551,0.594,0.689,0.213,0.923]],
+  ["Video only",'Yes',[0.943,0.675,0.52,0.969,0.289,0.988,0.634,0.391,0.648,0.502,0.068,0.962,0.537,0.334,0.705,0.307,0.126,0.88]],
+  ["Audio only",'No',[0.875,0.547,0.533,0.881,0.097,0.988,0.753,0.452,0.638,0.616,0.085,0.968,0.489,0.374,0.575,0.402,0.12,0.87]],
+  ["Audio only",'Yes',[0.819,0.522,0.053,0.984,0.075,0.978,0.614,0.5,0.176,0.862,0.067,0.949,0.481,0.479,0.21,0.761,0.111,0.872]],
+  ["Feature-level fusion",'No',[0.99,0.854,0.773,0.991,0.667,0.995,0.704,0.314,0.866,0.338,0.068,0.978,0.642,0.479,0.65,0.552,0.17,0.918]],
+  ["Feature-level fusion",'Yes',[0.993,0.863,0.747,0.993,0.718,0.994,0.733,0.295,0.882,0.306,0.066,0.979,0.612,0.372,0.809,0.337,0.147,0.926]],
+  ["Extra training step",'No',[0.984,0.853,0.8,0.989,0.645,0.995,0.729,0.319,0.882,0.344,0.07,0.981,0.609,0.464,0.656,0.524,0.163,0.915]],
+  ["Extra training step",'Yes',[0.993,0.845,0.853,0.986,0.593,0.996,0.807,0.307,0.927,0.319,0.071,0.987,0.596,0.356,0.809,0.315,0.143,0.921]],
+  ["+ SyncNet",'No',[0.968,0.805,0.813,0.981,0.504,0.995,0.639,0.31,0.882,0.329,0.069,0.98,0.607,0.457,0.646,0.516,0.159,0.912]],
+  ["+ SyncNet",'Yes',[0.99,0.809,0.853,0.98,0.5,0.996,0.68,0.294,0.924,0.299,0.069,0.986,0.611,0.375,0.763,0.353,0.143,0.913]],
+  ["Late fusion (average)",'No',[0.964,0.813,0.72,0.987,0.568,0.993,0.684,0.439,0.633,0.594,0.08,0.967,0.671,0.487,0.717,0.541,0.181,0.931]],
+  ["Late fusion (average)",'Yes',[0.941,0.76,0.48,0.992,0.59,0.988,0.661,0.437,0.63,0.59,0.079,0.966,0.52,0.358,0.679,0.348,0.128,0.884]],
+  ["Late fusion (learned)",'No',[0.991,0.831,0.947,0.979,0.522,0.999,0.803,0.4,0.919,0.471,0.089,0.99,0.695,0.42,0.874,0.392,0.169,0.957]],
+  ["Late fusion (learned)",'Yes',[0.982,0.768,0.787,0.975,0.424,0.995,0.8,0.39,0.963,0.447,0.089,0.995,0.539,0.296,0.896,0.216,0.139,0.936]],
+  ["+ SyncNet ",'No',[0.993,0.838,0.947,0.981,0.538,0.999,0.776,0.382,0.913,0.441,0.084,0.989,0.728,0.417,0.86,0.391,0.166,0.952]],
+  ["+ SyncNet ",'Yes',[0.983,0.757,0.84,0.968,0.389,0.996,0.785,0.373,0.963,0.419,0.085,0.995,0.639,0.349,0.797,0.307,0.14,0.914]]]]];
+const CLASSES = [
+ ['Fine-tuned','No',[.880,.960,.983,.984,.911]], ['Fine-tuned','Yes',[.853,.973,.964,.940,.810]],
+ ['Fine-tuned + SyncNet','No',[.907,1.000,.934,.995,.876]], ['Fine-tuned + SyncNet','Yes',[.867,1.000,.917,.994,.862]],
+ ['Frozen','No',[.947,.960,.955,.968,.840]], ['Frozen','Yes',[.787,.933,.945,.935,.762]],
+ ['Frozen + SyncNet','No',[.947,1.000,.958,.997,.910]], ['Frozen + SyncNet','Yes',[.840,1.000,.931,.999,.868]]];
+// per generator: [name, detector A metrics, detector B metrics]; metrics in MET order
+const GEN = [
+ [0, [
+  ["All",[0.993,0.838,0.947,0.981,0.538,0.999],[0.99,0.771,0.893,0.969,0.406,0.997]],
+  ["RTVC voice clone",[1,0.973,0.947,1,1,0.949],[1,0.947,0.893,1,1,0.904]],
+  ["FaceSwap",[0.916,0.842,0.947,0.771,0.74,0.955],[0.936,0.83,0.893,0.789,0.744,0.915]],
+  ["FSGAN",[0.984,0.936,0.947,0.977,0.835,0.993],[0.971,0.808,0.893,0.905,0.54,0.985]],
+  ["Wav2Lip",[0.997,0.918,0.947,0.985,0.763,0.997],[0.996,0.914,0.893,0.987,0.788,0.994]],
+  ["FaceSwap + Wav2Lip",[1,0.984,0.947,1,1,0.99],[1,0.967,0.893,1,1,0.98]],
+  ["FSGAN + Wav2Lip",[1,0.984,0.947,1,1,0.993],[1,0.968,0.893,1,1,0.985]]]],
+ [1, [
+  ["All",[0.776,0.382,0.913,0.441,0.084,0.989],[0.916,0.531,0.958,0.683,0.145,0.997]],
+  ["MicroTTS",[0.704,0.363,0.913,0.272,0.182,0.947],[0.982,0.833,0.958,0.883,0.593,0.992]],
+  ["Tacotron",[0.763,0.538,0.913,0.399,0.362,0.925],[0.969,0.846,0.958,0.829,0.677,0.981]],
+  ["Bark",[0.759,0.513,0.913,0.44,0.275,0.956],[0.886,0.611,0.958,0.568,0.34,0.983]],
+  ["XTTS",[0.868,0.634,0.913,0.625,0.351,0.97],[0.845,0.552,0.958,0.49,0.294,0.981]],
+  ["VALL-E X",[0.919,0.848,0.913,0.772,0.851,0.862],[0.838,0.713,0.958,0.461,0.717,0.885]]]],
+ [2, [
+  ["All",[0.728,0.417,0.86,0.391,0.166,0.952],[0.62,0.26,0.867,0.176,0.129,0.903]],
+  ["AniPortrait (audio)",[0.758,0.522,0.86,0.299,0.483,0.736],[0.709,0.447,0.867,0.196,0.451,0.658]],
+  ["AniPortrait (video)",[0.658,0.482,0.86,0.215,0.519,0.608],[0.739,0.542,0.867,0.294,0.547,0.691]],
+  ["EmoPortrait",[0.88,0.806,0.86,0.77,0.729,0.884],[0.537,0.36,0.867,0.098,0.409,0.505]],
+  ["Hallo",[0.636,0.492,0.86,0.229,0.523,0.623],[0.494,0.391,0.867,0.098,0.486,0.427]],
+  ["Hallo2",[0.694,0.574,0.86,0.35,0.558,0.722],[0.474,0.372,0.867,0.079,0.474,0.382]],
+  ["Hallo3",[0.676,0.471,0.86,0.1,0.975,0.017],[0.407,0.458,0.867,0,0.973,0]],
+  ["LivePortrait",[0.689,0.582,0.86,0.384,0.522,0.778],[0.747,0.522,0.867,0.292,0.489,0.737]]]]];
+
+const LIGHT = ['#e9f1fb','#d3e4f7','#b9d3f2','#9ec2ec','#83b0e5','#669cdc','#4a87d0','#3373c0','#2560a8','#1b4f8f','#143f75','#0e305c'];
+const DARK  = ['#18273a','#1c3150','#203c66','#26487b','#2d5591','#3463a6','#3c72ba','#4a82cb','#5c93d8','#73a6e3','#8fbaec','#aecdf3'];
+function isDark() {
+  const t = document.documentElement.getAttribute('data-theme');
+  return t === 'dark';
+}
+function shade(v) {
+  const r = isDark() ? DARK : LIGHT, i = Math.max(0, Math.min(r.length - 1, Math.round(v * (r.length - 1))));
+  const lightText = isDark() ? i < 7 : i >= 6;
+  return [r[i], lightText ? '#ffffff' : '#0d1b2a'];
+}
+function cell(v, tip, best, grey) {
+  const td = document.createElement('td');
+  td.className = 'c' + (best ? ' best' : '') + (grey ? ' na' : '');
+  td.textContent = v.toFixed(3);
+  if (!grey) { const [bg, fg] = shade(v); td.style.background = bg; td.style.color = fg; }
+  else td.style.background = 'var(--chip)';
+  td.dataset.tip = tip;
+  return td;
+}
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+const state = { metric: 'all', aug: 'both', gmetric: 'all', gds: 'all', gdet: 'both' };
+function renderMain() {
+  const t = document.getElementById('t-main'); t.textContent = '';
+  const cols = []; DS.forEach((d, di) => MET.forEach((m, mi) => { if (state.metric === 'all' || state.metric === m) cols.push([di, mi, di * MET.length + mi]); }));
+  const rows = MAIN.flatMap(([fam, rs]) => rs.filter(r => state.aug === 'both' || r[1] === state.aug).map(r => [fam, ...r]));
+  const best = {}; cols.forEach(([, mi, k]) => { if (mi < 2) best[k] = Math.max(...rows.map(r => r[3][k])); });
+  const thead = el('thead'), h1 = el('tr'), h2 = el('tr');
+  h1.appendChild(el('th')); h2.appendChild(el('th', 'row', 'Model'));
+  DS.forEach((d, di) => { const n = cols.filter(c => c[0] === di).length; const th = el('th', 'ds', d); th.colSpan = n; h1.appendChild(th); });
+  cols.forEach(([, mi]) => h2.appendChild(el('th', null, MET_SHORT[MET[mi]])));
+  thead.append(h1, h2); t.appendChild(thead);
+  const tb = el('tbody');
+  MAIN.forEach(([fam]) => {
+    const g = el('tr', 'group'); const th = el('th', null, fam); th.colSpan = cols.length + 1; g.appendChild(th); tb.appendChild(g);
+    rows.filter(r => r[0] === fam).forEach(([, name, aug, vals]) => {
+      const tr = el('tr'); const th = el('th', 'row' + (/^\+|^Extra/.test(name) ? ' indent' : ''), name.trim());
+      const chip = el('span', 'aug' + (aug === 'Yes' ? ' yes' : ''), aug === 'Yes' ? 'aug.' : 'no aug.'); th.appendChild(chip); tr.appendChild(th);
+      cols.forEach(([di, mi, k]) => tr.appendChild(cell(vals[k], `${fam} · ${name.trim()} (${aug === 'Yes' ? 'with' : 'without'} augmentation) · ${DS[di]} ${MET_LONG[MET[mi]]}: ${vals[k].toFixed(3)}`, best[k] === vals[k])));
+      tb.appendChild(tr);
+    });
+  });
+  t.appendChild(tb);
+}
+function renderClass() {
+  const t = document.getElementById('t-class'); t.textContent = '';
+  const heads = ['A real', 'B fake audio', 'C fake video', 'D both fake', '4-class F1'];
+  const hr = el('tr'); hr.appendChild(el('th', 'row', 'Learned late fusion'));
+  heads.forEach(h => hr.appendChild(el('th', null, h))); const th = el('thead'); th.appendChild(hr); t.appendChild(th);
+  const best = heads.map((_, k) => Math.max(...CLASSES.map(r => r[2][k])));
+  const tb = el('tbody');
+  CLASSES.forEach(([name, aug, vals]) => {
+    const tr = el('tr'); const h = el('th', 'row', name); h.appendChild(el('span', 'aug' + (aug === 'Yes' ? ' yes' : ''), aug === 'Yes' ? 'aug.' : 'no aug.')); tr.appendChild(h);
+    vals.forEach((v, k) => tr.appendChild(cell(v, `${name} (${aug === 'Yes' ? 'with' : 'without'} augmentation) · ${heads[k]}: ${v.toFixed(3)}`, v === best[k])));
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);
+}
+function renderGen() {
+  const t = document.getElementById('t-gen'); t.textContent = '';
+  const mets = MET.map((m, mi) => mi).filter(mi => state.gmetric === 'all' || MET[mi] === state.gmetric);
+  const dets = state.gdet === 'both' ? [0, 1] : [state.gdet === 'A' ? 0 : 1];
+  const thead = el('thead'), h1 = el('tr'), h2 = el('tr');
+  h1.appendChild(el('th')); h2.appendChild(el('th', 'row', 'Generator'));
+  mets.forEach(mi => { const th = el('th', 'ds', MET_SHORT[MET[mi]]); th.colSpan = dets.length; h1.appendChild(th); dets.forEach(d => h2.appendChild(el('th', 'met', 'AB'[d]))); });
+  thead.append(h1, h2); t.appendChild(thead);
+  const tb = el('tbody');
+  GEN.filter(([di]) => state.gds === 'all' || String(di) === state.gds).forEach(([di, rows]) => {
+    const g = el('tr', 'group'); const th = el('th', null, DS[di]); th.colSpan = mets.length * dets.length + 1; g.appendChild(th); tb.appendChild(g);
+    rows.forEach(([name, a, b]) => {
+      const tr = el('tr'); tr.appendChild(el('th', 'row' + (name === 'All' ? '' : ' indent'), name));
+      mets.forEach(mi => dets.forEach(d => {
+        const v = [a, b][d][mi], other = [a, b][1 - d][mi];
+        tr.appendChild(cell(v, `${DS[di]} · ${name} · detector ${'AB'[d]} · ${MET_LONG[MET[mi]]}: ${v.toFixed(3)}`, dets.length === 2 && v > other));
+      }));
+      tb.appendChild(tr);
+    });
+  });
+  t.appendChild(tb);
+}
+function renderBar() { const b = document.getElementById('bar'); b.textContent = ''; (isDark() ? DARK : LIGHT).forEach(c => { const s = el('span'); s.style.background = c; b.appendChild(s); }); }
+function renderAll() { renderMain(); renderClass(); renderGen(); renderBar(); }
+
+function bindSeg(id, key) {
+  document.getElementById(id).addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    state[key] = b.dataset.v;
+    document.querySelectorAll(`#${id} button`).forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    try { localStorage.setItem('dfr-' + key, state[key]); } catch (_) {}
+    renderAll();
+  });
+}
+Object.keys(state).forEach(k => {
+  try { const v = localStorage.getItem('dfr-' + k); if (v) { state[k] = v; document.querySelectorAll(`#${k} button`).forEach(x => x.setAttribute('aria-pressed', String(x.dataset.v === v))); } } catch (_) {}
+});
+Object.keys(state).forEach(k => bindSeg(k, k));
+
+const tip = document.getElementById('tip');
+document.addEventListener('mouseover', e => { const c = e.target.closest('td.c'); if (!c) { tip.hidden = true; return; } tip.textContent = c.dataset.tip; tip.hidden = false; });
+document.addEventListener('mousemove', e => { if (!tip.hidden) { tip.style.left = Math.min(e.clientX + 14, innerWidth - 300) + 'px'; tip.style.top = (e.clientY + 14) + 'px'; } });
+new MutationObserver(renderAll).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+renderAll();
+</script>
+</body>
+</html>
